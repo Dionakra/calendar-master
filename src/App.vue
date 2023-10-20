@@ -3,9 +3,9 @@
     <div class="flex flex-wrap">
       <div class="w-full md:w-1/2 " v-for="month in months" :key="month.name">
         <div class="mx-1 my-4 text-sm">
-          <h2 class="text-xl text-center">{{ month.name }}</h2>
+          <h2 class="text-xl text-center capitalize">{{ month.name }}</h2>
           <div class=" rounded-md shadow-md bg-white border border-gray-50">
-            <div class="flex text-center text-white py-1 bg-inma rounded-t-md font-bold">
+            <div class="capitalize flex text-center text-white py-1 bg-inma rounded-t-md font-bold">
               <div class="w-1/5">
                 {{ monday }}
               </div>
