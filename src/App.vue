@@ -1,5 +1,20 @@
 <template>
-  <div class=" bg-gray-50">
+  <div class="bg-gray-50">
+    <!-- LEGEND -->
+    <div class="flex flex-wrap mx-auto justify-center">
+      <div v-for="path in paths" class="w-1/2 sm:w-1/6 text-xs">
+        <div class=" mx-0.5">
+          <p class="text-sm pl-1">{{ path.name }}</p>
+          <div v-for="subject in getSubjectsForPath(path.id)" class="my-1 hover:cursor-pointer text-xs px-2 py-1 rounded"
+            :class="selectedSubjects.includes(subject.id) ? getPathBackground(path.id) : 'bg-gray-200'"
+            @click="toggleSelectedSubject(subject.id)">
+            <span class="font-bold">{{ subject.id }}</span>: {{ subject.name }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
     <div class="flex flex-wrap">
       <div class="w-full md:w-1/2 " v-for="month in months" :key="month.name">
         <div class="mx-1 my-4 text-sm">
@@ -83,15 +98,15 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { type BankHoliday, type Calendar, type Event, type Month, type Subject } from "./lib/Calendar";
-const pathColors: { [path: string]: string } = {
-  "GTI": "blue",
-  "I+D": "green",
-  "IC": "purple",
-  "ID": "orange",
-  "IS": "red",
-  "SE": "pink",
-  "": "gray"
-}
+const pathColors: { id: string, color: string, name: string }[] = [
+  { id: "GTI", color: "blue", name: "Gestión TI" },
+  { id: "IC", color: "purple", name: "Ingeniería Cloud" },
+  { id: "ID", color: "orange", name: "Ingeniería Datos" },
+  { id: "SE", color: "pink", name: "Software empresarial" },
+  { id: "IS", color: "red", name: "Infraestructura y Seguridad" },
+  { id: "I+D", color: "green", name: "Investigación y desarrollo" }
+]
+const LOCAL_STORAGE_KEY="SELECTED_SUBJECTS";
 
 export default defineComponent({
   data() {
@@ -122,6 +137,15 @@ export default defineComponent({
               desc: event.desc
             }
           })
+
+          const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
+          console.log(saved)
+          if(saved == null){
+            this.selectedSubjects = this.calendar?.subjects.map(subject => subject.id) || []
+          } else {
+            this.selectedSubjects = saved.split(",")
+          }
+          
         })
     },
     getMonths(calendar: Calendar): Month[] {
@@ -207,7 +231,7 @@ export default defineComponent({
 
       const dateStr = day.toDateString()
       return this.exams.filter(exam => {
-        return exam.date.toDateString() == dateStr
+        return exam.date.toDateString() == dateStr && this.selectedSubjects.includes(exam.id)
       })
     },
     getClassesForDay(day: Date): Event[] {
@@ -217,7 +241,7 @@ export default defineComponent({
       const dateStr = day.toDateString()
       return this.calendar.subjects.flatMap(subject => {
         return subject.lectures.filter(lecture => {
-          return this.toDate(lecture.date).toDateString() == dateStr
+          return this.toDate(lecture.date).toDateString() == dateStr && this.selectedSubjects.includes(subject.id)
         })
           .map(lecture => {
             return {
@@ -230,14 +254,20 @@ export default defineComponent({
           })
       })
     },
+    getPathColor(path: string): string {
+      return pathColors.find(pc => pc.id == path)?.color || "gray"
+    },
+    getPathBackground(path: string): string {
+      return `bg-${this.getPathColor(path)}-200`
+    },
     getLectureBackground(event: Event): string {
-      return `bg-${pathColors[event.path]}-200`
+      return `bg-${this.getPathColor(event.path)}-200`
     },
     getExamDotColor(event: Event): string {
-      return `bg-${pathColors[event.path]}-500`
+      return `bg-${this.getPathColor(event.path)}-500`
     },
     getExamPulseColor(event: Event): string {
-      return `bg-${pathColors[event.path]}-400`
+      return `bg-${this.getPathColor(event.path)}-400`
     },
     toDate(date: string): Date {
       var dateParts = date.split("/");
@@ -256,28 +286,6 @@ export default defineComponent({
       return Math.floor(days / 7);
 
     },
-
-    mySubjects(): Subject[] {
-      if (this.calendar) {
-        return this.calendar?.subjects
-          .filter(subject => this.selectedSubjects.includes(subject.name))
-      }
-
-      return []
-    },
-    toggleSubject(subject: string) {
-      const index = this.selectedSubjects.indexOf(subject)
-
-      if (index < 0) {
-        this.selectedSubjects.push(subject)
-      } else {
-        this.selectedSubjects.slice(index, 1)
-      }
-    },
-
-    subjectsThisDay(date: Date): Subject[] {
-      return []
-    },
     nextDay(day: Date): Date {
       const date = new Date(day);
       date.setDate(date.getDate() + 1);
@@ -285,6 +293,29 @@ export default defineComponent({
     },
     getWeekDay(date: Date): string {
       return date.toLocaleString(window.navigator.language, { weekday: 'long' });
+    },
+    getSubjectsForPath(path: string): { id: string, name: string }[] {
+      if (!this.calendar) {
+        return []
+      }
+
+      return this.calendar?.subjects.filter(subject => subject.path == path).map(subject => {
+        return {
+          id: subject.id,
+          name: subject.name
+        }
+      })
+    },
+    toggleSelectedSubject(subject: string) {
+      const index = this.selectedSubjects.indexOf(subject)
+
+      if (index >= 0) {
+        this.selectedSubjects.splice(index, 1)
+      } else {
+        this.selectedSubjects.push(subject)
+      }
+
+      localStorage.setItem(LOCAL_STORAGE_KEY, this.selectedSubjects.join(","))
     }
   },
   computed: {
@@ -305,8 +336,10 @@ export default defineComponent({
     },
     friday(): string {
       return this.getWeekDay(new Date("10/27/2023"))
+    },
+    paths(): { id: string, name: string, color: string }[] {
+      return pathColors
     }
-
   }
 })
 </script>
